@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="da4f4543-dd98-48e0-8675-82eb6554c0b6" name="1986" url="http://10.198.6.159">
+        <fileTransfer host="10.198.6.159" port="21" rootFolder="/lustre/wangwenhai.vendor/workspace/">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+          <option name="port" value="21" />
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
