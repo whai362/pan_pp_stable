@@ -28,7 +28,7 @@ sh ./compile.sh
 Please refer to [dataset/README.md](dataset/README.md) for dataset preparation.
 
 ## Training & Testing
-Please refer to [IC15_RESULTS.md](dataset/IC15_RESULTS.md) for training and testing.
+Please refer to [IC15_RESULTS.md](IC15_RESULTS.md) for training and testing.
 
 ### Evaluate the performance
 
