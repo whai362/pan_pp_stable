@@ -29,7 +29,7 @@ Please refer to [dataset/README.md](dataset/README.md) for dataset preparation.
 
 ## Training & Testing
 Please refer to [IC15_RESULTS.md](IC15_RESULTS.md) for training and testing.
-Please refer to [RCTW17_RESULTS.md](IC15_RESULTS.md) for training and testing.
+Please refer to [RCTW17_RESULTS.md](RCTW17_RESULTS.md) for training and testing.
 
 ### Evaluate the performance
 
