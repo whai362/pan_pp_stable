@@ -1,0 +1,1 @@
+python rctw/eval_rctw.py --pred ../outputs/rctw.json

@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from dataset import SynthLoader, PretrainDatasetLoader, JointDatasetLoader
+from dataset import RCTWLoader
 import models
 from utils import Logger, AverageMeter
 
@@ -23,31 +23,22 @@ EPS = 1e-6
 def train(args, train_loader, model, optimizer, epoch, start_iter):
     model.train()
 
-    batch_idx = 0
-    save_checkpoint({
-        'epoch': epoch,
-        'iter': batch_idx + 1,
-        'state_dict': model.state_dict(),
-        'lr': args.lr,
-        'optimizer': optimizer.state_dict()},
-        checkpoint=args.checkpoint,
-        filename='checkpoint.pth.tar')
-    exit()
-
-    batch_time = AverageMeter(max_len=500)
-    data_time = AverageMeter(max_len=500)
-    losses = AverageMeter(max_len=500)
-    losses_text = AverageMeter(max_len=500)
-    losses_kernels = AverageMeter(max_len=500)
-    losses_dis = AverageMeter(max_len=500)
-    losses_rec = AverageMeter(max_len=500)
-    ious_text = AverageMeter(max_len=500)
-    ious_kernel = AverageMeter(max_len=500)
-    accs_rec = AverageMeter(max_len=500)
+    batch_time = AverageMeter()
+    data_time = AverageMeter()
+    losses = AverageMeter()
+    losses_text = AverageMeter()
+    losses_kernels = AverageMeter()
+    losses_dis = AverageMeter()
+    losses_rec = AverageMeter()
+    ious_text = AverageMeter()
+    ious_kernel = AverageMeter()
+    accs_rec = AverageMeter()
 
     end = time.time()
-    for batch_idx, (imgs, gt_texts, gt_kernels, training_masks, gt_instances,
-                    gt_bboxes, gt_words, word_masks) in enumerate(train_loader):
+    for batch_idx, (
+            imgs, gt_texts, gt_kernels, training_masks, gt_instances, gt_bboxes,
+            gt_words, word_masks) \
+            in enumerate(train_loader):
         if batch_idx < start_iter:
             print('skipping iter: %d' % batch_idx)
             sys.stdout.flush()
@@ -73,17 +64,18 @@ def train(args, train_loader, model, optimizer, epoch, start_iter):
 
         outputs = model(**input)
 
+        # for key in outputs:
+        #     print(key, outputs[key].shape)
+        # exit()
+
         loss_text = torch.mean(outputs['loss_text'])
         losses_text.update(loss_text.item(), imgs.size(0))
 
         loss_kernels = torch.mean(outputs['loss_kernels'])
         losses_kernels.update(loss_kernels.item(), imgs.size(0))
 
-        if 'loss_dis' in outputs:
-            loss_dis = torch.mean(outputs['loss_dis'])
-            losses_dis.update(loss_dis.item(), imgs.size(0))
-        else:
-            loss_dis = 0
+        loss_dis = torch.mean(outputs['loss_dis'])
+        losses_dis.update(loss_dis.item(), imgs.size(0))
 
         loss = args.loss_w[0] * loss_text + args.loss_w[1] * loss_kernels + \
                args.loss_w[2] * loss_dis
@@ -94,7 +86,7 @@ def train(args, train_loader, model, optimizer, epoch, start_iter):
         iou_kernel = torch.mean(outputs['iou_kernel'])
         ious_kernel.update(iou_kernel.item(), imgs.size(0))
 
-        if 'loss_rec' in outputs:
+        if args.with_rec:
             loss_rec = outputs['loss_rec']
             valid = loss_rec > -EPS
             if torch.sum(valid) > 0:
@@ -120,7 +112,7 @@ def train(args, train_loader, model, optimizer, epoch, start_iter):
                          '| Total: {total:.0f}min | ETA: {eta:.0f}min ' \
                          '| Loss: {loss:.3f} ' \
                          '| Loss text/kernel/dis/rec: {loss_text:.3f}/{loss_kernel:.3f}/{loss_dis:.3f}/{loss_rec:.3f} ' \
-                         '| IoU text/kernel: {iou_text:.3f}/{iou_kernel:.3f} ' \
+                         '| IoU_text/kernel: {iou_text:.3f}/{iou_kernel:.3f} ' \
                          '| Acc rec: {acc_rec:.3f}'.format(
                 batch=batch_idx + 1,
                 size=len(train_loader),
@@ -135,20 +127,10 @@ def train(args, train_loader, model, optimizer, epoch, start_iter):
                 loss=losses.avg,
                 iou_text=ious_text.avg,
                 iou_kernel=ious_kernel.avg,
-                acc_rec=accs_rec.avg
+                acc_rec=accs_rec.avg,
             )
             print(output_log)
             sys.stdout.flush()
-
-        if batch_idx > 0 and batch_idx % 1000 == 0:
-            save_checkpoint({
-                'epoch': epoch,
-                'iter': batch_idx + 1,
-                'state_dict': model.state_dict(),
-                'lr': args.lr,
-                'optimizer': optimizer.state_dict()},
-                checkpoint=args.checkpoint,
-                filename='checkpoint.pth.tar')
 
     return losses.avg, ious_text.avg, ious_kernel.avg, accs_rec.avg
 
@@ -166,23 +148,32 @@ def adjust_learning_rate(args, optimizer, epoch, iter_num, max_iter_num):
         param_group['lr'] = lr
 
 
-def save_checkpoint(state, checkpoint='checkpoint',
+def save_checkpoint(args, state, checkpoint='checkpoint',
                     filename='checkpoint.pth.tar'):
-    filepath = osp.join(checkpoint, filename)
+    filepath = os.path.join(checkpoint, filename)
     torch.save(state, filepath)
+    epoch = state['epoch']
+    iter = state['iter']
+    if iter == 0 and epoch > args.epoch - 100 and epoch % 10 == 0:
+        filename = 'checkpoint_%dep.pth.tar' % epoch
+        filepath = os.path.join(checkpoint, filename)
+        torch.save(state, filepath)
 
 
 def main(args):
     if args.checkpoint == '':
-        args.checkpoint = 'checkpoints/{dataset}_{arch}_{img_size}'.format(
-            dataset=args.dataset,
+        args.checkpoint = 'checkpoints/rctw_{split}_{arch}_{img_size}'.format(
+            split=args.split,
             arch=args.arch,
             img_size=args.img_size)
         if args.with_rec:
-            args.checkpoint += '_with_rec'
+            args.checkpoint += "_with_rec"
             print('with recognition')
+        if args.pretrain:
+            args.checkpoint += "_finetune"
+            print('use pretrained model: %s' % args.pretrain)
     print('checkpoint path: %s' % args.checkpoint)
-    if not osp.isdir(args.checkpoint):
+    if not os.path.isdir(args.checkpoint):
         os.makedirs(args.checkpoint)
 
     kernel_num = 2
@@ -191,33 +182,14 @@ def main(args):
     start_epoch = 0
     start_iter = 0
 
-    if args.dataset == 'synth':
-        data_loader = SynthLoader(
-            split='train',
-            is_transform=True,
-            img_size=args.img_size,
-            kernel_scale=args.kernel_scale,
-            short_size=args.short_size,
-            for_rec=args.with_rec,
-            read_type=args.read_type)
-    elif args.dataset == 'pretrain':
-        data_loader = PretrainDatasetLoader(
-            split='train',
-            is_transform=True,
-            img_size=args.img_size,
-            kernel_scale=args.kernel_scale,
-            short_size=args.short_size,
-            for_rec=args.with_rec,
-            read_type=args.read_type)
-    elif args.dataset == 'joint':
-        data_loader = JointDatasetLoader(
-            split='train',
-            is_transform=True,
-            img_size=args.img_size,
-            kernel_scale=args.kernel_scale,
-            short_size=args.short_size,
-            for_rec=args.with_rec,
-            read_type=args.read_type)
+    data_loader = RCTWLoader(
+        split=args.split,
+        is_transform=True,
+        img_size=args.img_size,
+        kernel_scale=args.kernel_scale,
+        short_size=args.short_size,
+        for_rec=args.with_rec,
+        read_type=args.read_type)
     train_loader = torch.utils.data.DataLoader(
         data_loader,
         batch_size=args.batch,
@@ -248,12 +220,6 @@ def main(args):
             num_classes=n_classes,
             rec_cfg=rec_cfg,
             rec_cscale=args.rec_cscale)
-    elif args.arch == 'resnet101':
-        model = models.resnet101(
-            pretrained=True,
-            num_classes=n_classes,
-            rec_cfg=rec_cfg,
-            rec_cscale=args.rec_cscale)
     elif args.arch == 'vgg':
         model = models.vgg16_bn(
             pretrained=True,
@@ -263,7 +229,6 @@ def main(args):
 
     model = torch.nn.DataParallel(model).cuda()
 
-    # Check if model has custom optimizer / loss
     if hasattr(model.module, 'optimizer'):
         optimizer = model.module.optimizer
     else:
@@ -276,21 +241,37 @@ def main(args):
                 momentum=0.99,
                 weight_decay=5e-4)
 
-    title = 'pretrain'
+    title = 'rctw'
     logger = None
+    if args.pretrain:
+        print('Finetuning from pretrain.')
+        assert os.path.isfile(
+            args.pretrain), 'Error: no checkpoint directory found!'
+        checkpoint = torch.load(args.pretrain)
+
+        deleted_keys = []
+        for key in checkpoint['state_dict']:
+            if checkpoint['state_dict'][key].shape != \
+                    model.state_dict()[key].shape:
+                deleted_keys.append(key)
+        for key in deleted_keys:
+            print('delete key:', key, checkpoint['state_dict'][key].shape)
+            del checkpoint['state_dict'][key]
+
+        model.load_state_dict(checkpoint['state_dict'], strict=False)
     if args.resume:
-        # Load checkpoint.
         print('Resuming from checkpoint.')
-        assert osp.isfile(args.resume), 'Error: no checkpoint directory found!'
+        assert os.path.isfile(
+            args.resume), 'Error: no checkpoint directory found!'
         checkpoint = torch.load(args.resume)
         start_epoch = checkpoint['epoch']
         start_iter = checkpoint['iter']
         args.lr = checkpoint['lr']
         model.load_state_dict(checkpoint['state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer'])
-        if osp.isfile(osp.join(args.checkpoint, 'log.txt')):
+        if os.path.isfile(os.path.join(args.checkpoint, 'log.txt')):
             logger = Logger(
-                osp.join(args.checkpoint, 'log.txt'),
+                os.path.join(args.checkpoint, 'log.txt'),
                 title=title,
                 resume=True)
     if logger is None:
@@ -300,18 +281,18 @@ def main(args):
     for epoch in range(start_epoch, args.epoch):
         print('\nEpoch: [%d | %d]' % (epoch + 1, args.epoch), flush=True)
 
-        train_loss, train_iou_text, train_iou_kernel, train_acc_rec = train(
-            args, train_loader, model, optimizer, epoch, start_iter)
+        train_loss, train_iou_text, train_iou_kernel, train_acc_rec = \
+            train(args, train_loader, model, optimizer, epoch, start_iter)
 
-        save_checkpoint({
-            'epoch': epoch + 1,
-            'iter': 0,
-            'state_dict': model.state_dict(),
-            'lr': args.lr,
-            'optimizer': optimizer.state_dict()},
-            checkpoint=args.checkpoint,
-            filename='checkpoint_%dep.pth.tar' % epoch \
-                if epoch > args.epoch - 10 else 'checkpoint.pth.tar')
+        save_checkpoint(
+            args,
+            {'epoch': epoch + 1,
+             'iter': 0,
+             'state_dict': model.state_dict(),
+             'lr': args.lr,
+             'optimizer': optimizer.state_dict()},
+            checkpoint=args.checkpoint)
+
         logger.append([
             args.lr,
             train_loss,
@@ -326,35 +307,39 @@ def str2bool(v):
         return True
     elif v.lower() == 'false':
         return False
-    raise argparse.ArgumentTypeError('Unsupported value encountered.')
+    else:
+        raise argparse.ArgumentTypeError('Unsupported value encountered.')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Hyperparams')
     parser.add_argument('--arch', nargs='?', type=str, default='resnet18')
-    parser.add_argument('--dataset', nargs='?', type=str, default='synth')
+    parser.add_argument('--split', nargs='?', type=str, default='train')
     parser.add_argument('--batch', nargs='?', type=int, default=16)
     parser.add_argument('--lr', nargs='?', type=float, default=1e-3)
     parser.add_argument('--use_polylr', nargs='?', type=str2bool, default=True)
     parser.add_argument('--use_adam', nargs='?', type=str2bool, default=True)
-    parser.add_argument('--epoch', nargs='?', type=int, default=3)
-    parser.add_argument('--schedule', type=int, nargs='+', default=[1, 2])
-    parser.add_argument('--img_size', nargs='?', type=int, default=640)
-    parser.add_argument('--short_size', nargs='?', type=int, default=640)
-    parser.add_argument('--kernel_scale', nargs='?', type=float, default=0.5)
+    parser.add_argument('--epoch', nargs='?', type=int, default=300)
+    parser.add_argument('--schedule', type=int, nargs='+', default=[100, 200])
+    parser.add_argument('--img_size', nargs='?', type=int, default=736)
+    parser.add_argument('--short_size', nargs='?', type=int, default=736)
+    parser.add_argument('--feature_scale', nargs='?', type=int, default=1)
+    parser.add_argument('--kernel_scale', nargs='?', type=float, default=0.7)
     parser.add_argument('--emb_dim', nargs='?', type=int, default=4)
     parser.add_argument('--with_rec', nargs='?', type=str2bool, default=False)
-    parser.add_argument('--feature_size', type=int, nargs='+', default=[8, 32])
+    parser.add_argument('--feature_size', type=int, nargs='+', default=[12, 48])
     parser.add_argument('--loss_w', type=float, nargs='+',
                         default=[1, 0.5, 0.25])
     parser.add_argument('--loss_dis_w', type=float, nargs='+',
                         default=[1, 1, 0.1])
+    parser.add_argument('--version', default='', type=str)
     parser.add_argument('--resume', nargs='?', type=str, default=None)
+    parser.add_argument('--pretrain', nargs='?', type=str, default=None)
     parser.add_argument('--checkpoint', nargs='?', type=str, default='')
     parser.add_argument('--report_speed', nargs='?', type=str2bool,
                         default=False)
     parser.add_argument('--read_type', nargs='?', type=str, default='pil')
-    parser.add_argument('--rec_cscale', nargs='?', type=float, default=1)
+    parser.add_argument('--rec_cscale', nargs='?', type=float, default=4)
     args = parser.parse_args()
     print(args)
 

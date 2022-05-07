@@ -2,8 +2,24 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="22cbe542-fe69-4220-9c8e-55fa5abc2eac" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/IC15_RESULTS.md" beforeDir="false" afterPath="$PROJECT_DIR$/IC15_RESULTS.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dataset/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/dataset/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dataset/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataset/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dataset/joint_dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataset/joint_dataset.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dataset/pretrain_dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataset/pretrain_dataset.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/eval/ctw1500/eval.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/eval/ctw1500/file_util.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/eval/eval_ctw1500.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/eval/rctw/eval_rctw.py" beforeDir="false" afterPath="$PROJECT_DIR$/eval/rctw/eval_rctw.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/beam_search/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/beam_search/beam_search.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/beam_search/topk.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/recognition_head.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/recognition_head.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/resnet.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/resnet.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/vgg.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/vgg.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pretrain.py" beforeDir="false" afterPath="$PROJECT_DIR$/pretrain.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_ic15.py" beforeDir="false" afterPath="$PROJECT_DIR$/test_ic15.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -50,7 +66,7 @@
       <option name="presentableId" value="Default" />
       <updated>1651479240262</updated>
       <workItem from="1651479242621" duration="12037000" />
-      <workItem from="1651503246703" duration="19840000" />
+      <workItem from="1651503246703" duration="40520000" />
     </task>
     <servers />
   </component>

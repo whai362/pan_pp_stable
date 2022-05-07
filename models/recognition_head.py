@@ -4,7 +4,6 @@ import torch
 import torch.nn.functional as F
 from .losses import acc
 import numpy as np
-from .beam_search import BeamSearch
 from .vec2word_pyx import vec2word
 
 
@@ -183,12 +182,7 @@ class RecognitionHead(nn.Module):
         if self.training:
             return self.decoder(x, holistic_feature, target)
         else:
-            if args.beam_size <= 1:
-                return self.decoder.forward_test(x, holistic_feature)
-            else:
-                return self.decoder.beam_search(x, holistic_feature,
-                                                beam_size=args.beam_size)
-
+            return self.decoder.forward_test(x, holistic_feature)
 
 class Encoder(nn.Module):
 
@@ -346,43 +340,6 @@ class Decoder(nn.Module):
             self.id2char, self.END_TOKEN)
 
         return words, word_scores
-
-    def beam_search(self, x, holistic_feature, beam_size=2):
-        batch_size, c, h, w = x.size()
-        x_beam = x.repeat(1, beam_size, 1, 1).view(-1, c, h, w)
-
-        def decode_step(inputs, h, k):
-            if len(inputs.shape) == 1:
-                inputs = self.emb(inputs)
-            for i in range(self.num_layers):
-                if i == 0:
-                    xt = inputs
-                else:
-                    xt = h[i - 1, 0]
-                h[i, 0], h[i, 1] = self.lstm_u[i](xt, (h[i, 0], h[i, 1]))
-            ht = h[-1, 0]
-            if ht.size(0) == batch_size:
-                out_t = self.att(x, ht)
-            else:
-                out_t = self.att(x_beam, ht)
-            out_t = torch.cat((out_t, ht), -1)
-            out_t = torch.softmax(self.cls(out_t), dim=1)
-            scores, words = torch.topk(out_t, k, dim=1, sorted=True)
-
-            return words, scores, h
-
-        bs = BeamSearch(decode_step, self.END_TOKEN, beam_size, 32)
-
-        x0 = holistic_feature
-        h = x.new_zeros(self.num_layers, 2, batch_size, self.hidden_dim)
-        words, scores, h = decode_step(x0, h, 1)
-        init_inputs = x.new_full((batch_size,), self.START_TOKEN,
-                                 dtype=torch.long)
-        seqs, seq_scores = bs.beam_search(init_inputs, h)
-        words, _ = self.to_words(seqs)
-        # print(words)
-        # exit()
-        return words, seq_scores
 
 
 class MultiHeadAttentionLayer(nn.Module):

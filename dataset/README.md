@@ -34,10 +34,12 @@ pan_pp.pytorch
     │   ├── ...
     │   └── 200
     └── ICDAR2017-MLT
-        ├── ch8_training_images
-        ├── ch8_validation_images
-        ├── ch8_training_localization_transcription_gt_v2
-        └── ch8_validation_localization_transcription_gt_v2
+    │   ├── ch8_training_images
+    │   ├── ch8_validation_images
+    │   ├──  ch8_training_localization_transcription_gt_v2
+    │   ├── ch8_validation_localization_transcription_gt_v2
+    └── RCTW-17
+        ├── train
 ```
 
 ## Download
@@ -57,3 +59,11 @@ These datasets can be downloaded from the following links:
 - ICDAR2017-MLT [[dataset]](https://rrc.cvc.uab.es/?ch=8&com=downloads)
 
 - COCO-Text [[dataset]](https://rrc.cvc.uab.es/?ch=5&com=downloads)
+
+- RCTW-17 [[dataset]](https://rctw.vlrlab.net/)
+Prepare dataset
+```
+cd dataset
+python rctw_data_split.py
+python rctw_gen_char_dict.py
+```

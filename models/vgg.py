@@ -151,7 +151,8 @@ class VGG(nn.Module):
                  num_classes=6,
                  init_weights=True,
                  scale=1,
-                 rec_cfg=None):
+                 rec_cfg=None,
+                 rec_cscale=1):
         super(VGG, self).__init__()
         self.features = features
 
@@ -172,7 +173,7 @@ class VGG(nn.Module):
         self.recognition_head = None
         if rec_cfg is not None:
             rec_cfg['input_dim'] = 512
-            rec_cfg['hidden_dim'] = 128
+            rec_cfg['hidden_dim'] = int(128 * rec_cscale)
             self.recognition_head = RecognitionHead(**rec_cfg)
 
         self.scale = scale
@@ -431,7 +432,8 @@ def vgg16_bn(pretrained=False, progress=True, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    pretrained = False
+    # debug
+    # pretrained = False
     return _vgg('vgg16_bn', 'D', True, pretrained, progress, **kwargs)
 
 

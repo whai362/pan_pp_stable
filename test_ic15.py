@@ -25,7 +25,6 @@ def report_speed(outputs, fps, time_cost):
             time_cost_ += outputs[key]
             time_cost[key].update(outputs[key])
             print(key, time_cost[key].avg)
-
     fps.update(time_cost_)
 
     print('FPS: %.2f' % (1.0 / fps.avg))
@@ -221,7 +220,7 @@ def test(args):
             rec_cfg=rec_cfg)
     elif args.arch == 'resnet50':
         model = models.resnet50(
-            pretrained=True,
+            pretrained=False,
             num_classes=n_classes,
             scale=args.scale,
             rec_cfg=rec_cfg)
@@ -316,8 +315,9 @@ def test(args):
                     (text_pos[0], text_pos[1]),
                     cv2.FONT_HERSHEY_COMPLEX,
                     0.5, (255, 0, 0), 1)
-            cv2.imwrite(osp.join(vis_root, image_name + '.png'),
-                        vis_res[:, :, ::-1])
+            cv2.imwrite(
+                osp.join(vis_root, image_name + '.png'),
+                vis_res[:, :, ::-1])
 
     # package results
     if args.with_rec:

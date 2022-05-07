@@ -35,7 +35,7 @@ python pretrain.py --dataset synth --arch resnet18 --img_size 640 --short_size 6
 ```
 - Training
 ```
-python train_ic15.py --arch resnet18 --img_size 736 --short_size 736 --pretrain [pretrain checkpoint path]
+python train_ic15.py --arch resnet18 --img_size 736 --short_size 736 --pretrain [pretrained checkpoint path]
 ```
 - Test
 ```
@@ -53,7 +53,7 @@ python pretrain.py --dataset synth --arch resnet18 --img_size 896 --short_size 8
 ```
 - Training
 ```
-python train_ic15.py --arch resnet18 --img_size 896 --short_size 896 --pretrain [pretrain checkpoint path]
+python train_ic15.py --arch resnet18 --img_size 896 --short_size 896 --pretrain [pretrained checkpoint path]
 ```
 - Test
 ```
@@ -187,7 +187,7 @@ python pretrain.py --dataset pretrain --arch resnet18 --with_rec True --epoch 3 
 ```
 - Training
 ```
-python train_ic15.py --arch resnet18 --with_rec True --epoch 100 --lr 1e-4 --img_size 736 --short_size 736 --pretrain [pretrain checkpoint path]
+python train_ic15.py --arch resnet18 --with_rec True --epoch 100 --lr 1e-4 --img_size 736 --short_size 736 --pretrain [pretrained checkpoint path]
 ```
 - Test
 ```
@@ -229,7 +229,7 @@ python pretrain.py --dataset pretrain --arch resnet18 --with_rec True --epoch 3 
 ```
 - Training
 ```
-python train_ic15.py --arch resnet18 --with_rec True --epoch 100 --lr 1e-4 --img_size 896 --short_size 896 --pretrain [pretrain checkpoint path]
+python train_ic15.py --arch resnet18 --with_rec True --epoch 100 --lr 1e-4 --img_size 896 --short_size 896 --pretrain [pretrained checkpoint path]
 ```
 - Test
 ```
@@ -271,7 +271,7 @@ python pretrain.py --dataset pretrain --arch resnet50 --with_rec True --epoch 3 
 ```
 - Training
 ```
-python train_ic15.py --arch resnet50 --with_rec True --epoch 100 --lr 1e-4 --img_size 896 --short_size 896 --pretrain [pretrain checkpoint path]
+python train_ic15.py --arch resnet50 --with_rec True --epoch 100 --lr 1e-4 --img_size 896 --short_size 896 --pretrain [pretrained checkpoint path]
 ```
 - Test
 ```

@@ -222,7 +222,14 @@ class FPEM(nn.Module):
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, num_classes=6, scale=1, rec_cfg=None):
+    def __init__(
+            self,
+            block,
+            layers,
+            num_classes=6,
+            scale=1,
+            rec_cfg=None,
+            rec_cscale=1):
         self.inplanes = 128
         super(ResNet, self).__init__()
         self.conv1 = conv3x3(3, 64, stride=2)
@@ -262,7 +269,7 @@ class ResNet(nn.Module):
         self.recognition_head = None
         if rec_cfg is not None:
             rec_cfg['input_dim'] = 512
-            rec_cfg['hidden_dim'] = 128
+            rec_cfg['hidden_dim'] = int(128 * rec_cscale)
             self.recognition_head = RecognitionHead(**rec_cfg)
 
         self.scale = scale

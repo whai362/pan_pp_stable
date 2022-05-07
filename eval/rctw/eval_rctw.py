@@ -9,8 +9,8 @@ import editdistance
 import zipfile
 import json
 
-data_root = '/mnt/lustre/wangwenhai/workspace/pan_ppv2.pytorch/data/RCTW-17/'
-dictmap_to_lower = mmcv.load(data_root + 'dictmap_to_lower.json')
+data_root = '../data/RCTW-17/'
+dictmap_to_lower = mmcv.load('../dataset/dictmap_to_lower.json')
 
 
 def group_by_key(detections, key):
@@ -115,12 +115,12 @@ def cat_best_hmean(gt, predictions, thresholds):
     fmeasures = 2 * precisions * recalls / (precisions + recalls + 1e-6)
 
     best_i = np.argmax(fmeasures)
-    print('[Best F-Measure] p: {:.2f}, r: {:.2f}, f: {:.2f}, 1-ned: {:.2f}, best_score_th: {:.3f}'.format(
+    print('[Best F-Measure] p: {:.2f}, r: {:.2f}, f: {:.2f}, aed: {:.2f}, best_score_th: {:.3f}'.format(
         float(precisions[best_i]) * 100, float(recalls[best_i]) * 100, float(fmeasures[best_i]) * 100,
         float(ed[best_i]), predictions[best_i]['score']))
 
     best_i = np.argmin(ed)
-    print('[Best 1-NED]     p: {:.2f}, r: {:.2f}, f: {:.2f}, 1-ned: {:.2f}, best_score_th: {:.3f}'.format(
+    print('[Best AED]     p: {:.2f}, r: {:.2f}, f: {:.2f}, aed: {:.2f}, best_score_th: {:.3f}'.format(
         float(precisions[best_i]) * 100, float(recalls[best_i]) * 100, float(fmeasures[best_i]) * 100,
         float(ed[best_i]), predictions[best_i]['score']))
 

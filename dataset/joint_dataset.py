@@ -254,14 +254,16 @@ def random_crop_padding(imgs, target_size):
         if len(imgs[idx].shape) == 3:
             s3_length = int(imgs[idx].shape[-1])
             img = imgs[idx][i:i + t_h, j:j + t_w, :]
-            img_p = cv2.copyMakeBorder(img, 0, p_h - t_h, 0, p_w - t_w,
-                                       borderType=cv2.BORDER_CONSTANT,
-                                       value=tuple(0 for i in range(s3_length)))
+            img_p = cv2.copyMakeBorder(
+                img, 0, p_h - t_h, 0, p_w - t_w,
+                borderType=cv2.BORDER_CONSTANT,
+                value=tuple(0 for i in range(s3_length)))
         else:
             img = imgs[idx][i:i + t_h, j:j + t_w]
-            img_p = cv2.copyMakeBorder(img, 0, p_h - t_h, 0, p_w - t_w,
-                                       borderType=cv2.BORDER_CONSTANT,
-                                       value=(0,))
+            img_p = cv2.copyMakeBorder(
+                img, 0, p_h - t_h, 0, p_w - t_w,
+                borderType=cv2.BORDER_CONSTANT,
+                value=(0,))
         n_imgs.append(img_p)
 
     return n_imgs
