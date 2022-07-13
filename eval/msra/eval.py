@@ -4,11 +4,11 @@ import numpy as np
 import math
 import cv2
 
-project_root = '/mnt/lustre/wangwenhai/workspace/pan_ppv2.pytorch/'
-# project_root = '/mnt/cache/wangwenhai/workspace/pan_ppv2.pytorch/'
+project_root = '../../'
 
 pred_root = project_root + 'outputs/submit_msra/'
 gt_root = project_root + 'data/MSRA-TD500/test/'
+
 
 def get_pred(path):
     lines = file_util.read_file(path).split('\n')
@@ -18,10 +18,11 @@ def get_pred(path):
             continue
         bbox = line.split(',')
         if len(bbox) % 2 == 1:
-            print path
-        bbox = [(int)(x) for x in bbox]
+            print(path)
+        bbox = [int(x) for x in bbox]
         bboxes.append(bbox)
     return bboxes
+
 
 def get_gt(path):
     lines = file_util.read_file(path).split('\n')
@@ -42,80 +43,37 @@ def get_gt(path):
 
         bbox = cv2.boxPoints(((x1, y1), (w_, h_), theta))
         bbox = bbox.reshape(-1)
-        
+
         bboxes.append(bbox)
         tags.append(np.int(gt[1]))
     return np.array(bboxes), tags
 
-def get_union(pD,pG):
-    areaA = pD.area();
-    areaB = pG.area();
-    return areaA + areaB - get_intersection(pD, pG);        
 
-def get_intersection(pD,pG):
+def get_union(pD, pG):
+    areaA = pD.area()
+    areaB = pG.area()
+    return areaA + areaB - get_intersection(pD, pG)
+
+
+def get_intersection(pD, pG):
     pInt = pD & pG
     if len(pInt) == 0:
         return 0
     return pInt.area()
 
+
 if __name__ == '__main__':
     th = 0.5
     pred_list = file_util.read_dir(pred_root)
 
-    # print(pred_list)
-    # exit()
-
-    '''
-    tp, fp, npos = 0, 0, 0
-    
-    for pred_path in pred_list:
-        preds = get_pred(pred_path)
-        gt_path = gt_root + pred_path.split('/')[-1].split('.')[0] + '.gt'
-        gts, tags = get_gt(gt_path)
-        npos += len(gts)
-        
-        cover = set()
-        for pred_id, pred in enumerate(preds):
-            pred = np.array(pred)
-            pred = pred.reshape(pred.shape[0] / 2, 2)
-            # if pred.shape[0] <= 2:
-            #     continue
-            pred_p = plg.Polygon(pred)
-            
-            flag = False
-            for gt_id, (gt, tag) in enumerate(zip(gts, tags)):
-                gt = np.array(gt)
-                gt = gt.reshape(gt.shape[0] / 2, 2)
-                gt_p = plg.Polygon(gt)
-
-                union = get_union(pred_p, gt_p)
-                inter = get_intersection(pred_p, gt_p)
-
-                if inter * 1.0 / union >= th:
-                    if gt_id not in cover:
-                        flag = True
-                        cover.add(gt_id)
-            if flag:
-                tp += 1.0
-            else:
-                fp += 1.0
-
-    print tp, fp, npos
-    precision = tp / (tp + fp)
-    recall = tp / npos
-    hmean = 0 if (precision + recall) == 0 else 2.0 * precision * recall / (precision + recall)
-    '''
-
-
     count, tp, fp, tn, ta = 0, 0, 0, 0, 0
     for pred_path in pred_list:
-        count = count+1
+        count = count + 1
         preds = get_pred(pred_path)
         gt_path = gt_root + pred_path.split('/')[-1].split('.')[0] + '.gt'
         gts, tags = get_gt(gt_path)
 
         ta = ta + len(preds)
-        # for i in range(len(gts)):
         for gt, tag in zip(gts, tags):
             gt = np.array(gt)
             gt = gt.reshape(gt.shape[0] / 2, 2)
@@ -129,18 +87,17 @@ if __name__ == '__main__':
 
                 union = get_union(pred_p, gt_p)
                 inter = get_intersection(pred_p, gt_p)
-                iou = inter * 1.0 / union
+                iou = float(inter) / union
                 if iou >= th:
                     flag = 1
                     tp = tp + 1
                     break
 
             if flag == 0 and difficult == 0:
-            # if flag == 0:
                 fp = fp + 1
 
     recall = float(tp) / (tp + fp)
     precision = float(tp) / ta
     hmean = 0 if (precision + recall) == 0 else 2.0 * precision * recall / (precision + recall)
 
-    print 'p: %.4f, r: %.4f, f: %.4f'%(precision, recall, hmean)
+    print('p: %.4f, r: %.4f, f: %.4f' % (precision, recall, hmean))

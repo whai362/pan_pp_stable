@@ -13,7 +13,7 @@ import mmcv
 import collections
 import editdistance
 
-from dataset import RCTWLoader
+from dataset import CTWLoader, CTWv2Loader
 import models
 from utils import Logger, AverageMeter
 
@@ -25,6 +25,7 @@ def report_speed(outputs, fps, time_cost):
             time_cost_ += outputs[key]
             time_cost[key].update(outputs[key])
             print(key, time_cost[key].avg)
+
     fps.update(time_cost_)
 
     print('FPS: %.2f' % (1.0 / fps.avg))
@@ -37,13 +38,19 @@ def write_result_as_txt(image_name, bboxes, path, words=None):
     file_path = path + '%s.txt' % (image_name)
     lines = []
     for i, bbox in enumerate(bboxes):
+        bbox = bbox.reshape(-1, 2)[:, ::-1].reshape(-1)
         values = [int(v) for v in bbox]
         if words is None:
-            line = "%d,%d,%d,%d,%d,%d,%d,%d\n" % tuple(values)
+            line = "%d" % values[0]
+            for v_id in range(1, len(values)):
+                line += ",%d" % values[v_id]
+            line += '\n'
             lines.append(line)
         elif words[i] is not None:
-            line = "%d,%d,%d,%d,%d,%d,%d,%d" % tuple(values) + \
-                   ",%s\n" % words[i]
+            line = "%d" % values[0]
+            for v_id in range(1, len(values)):
+                line += ",%d" % values[v_id]
+            line += ',%s\n' % words[i]
             lines.append(line)
     with open(file_path, 'w') as f:
         for line in lines:
@@ -51,17 +58,51 @@ def write_result_as_txt(image_name, bboxes, path, words=None):
 
 
 def correct(word, score, voc=None):
-    return word.replace('\"', "")
+    EPS = 1e-6
+    if len(word) < 1:
+        return None
+    if score > args.rec_score:  # 0.95
+        return word
+    if not word.isalpha():
+        if score > args.unalpha_score:  # 0.91
+            return word
+        return None
+
+    if score < args.rec_ignore_score:  # 0.91
+        return None
+
+    if voc is not None:
+        min_d = 1e10
+        matched = ''
+        for voc_word in voc:
+            d = editdistance.eval(word, voc_word)
+            if d < min_d:
+                matched = voc_word
+                min_d = d
+            if min_d == 0:
+                break
+        if float(min_d) / len(word) < args.edit_dist_score:  # 1.0/3.0
+            return matched
+        else:
+            return None
+
+    return word
 
 
 def test(args):
     n_classes = 2 + args.emb_dim
 
-    data_loader = RCTWLoader(
-        split='test',
-        short_size=args.short_size,
-        read_type=args.read_type,
-        report_speed=args.report_speed)
+    if args.with_rec:
+        data_loader = CTWv2Loader(
+            split='test',
+            short_size=args.short_size,
+            read_type=args.read_type)
+    else:
+        data_loader = CTWLoader(
+            split='test',
+            short_size=args.short_size,
+            read_type=args.read_type,
+            report_speed=args.report_speed)
     test_loader = torch.utils.data.DataLoader(
         data_loader,
         batch_size=1,
@@ -77,45 +118,52 @@ def test(args):
             'feature_size': args.feature_size
         }
 
+    voc = None
+    if args.voc == 'g':
+        generic_voc_path = './data/ICDAR2015/Challenge4/GenericVocabulary.txt'
+        lines = mmcv.list_from_file(generic_voc_path)
+        voc = []
+        for line in lines:
+            if len(line) == 0:
+                continue
+            line = line.encode('utf-8').decode('utf-8-sig')
+            line = line.replace('\xef\xbb\xbf', '')
+            if line[0] == '#':
+                continue
+            voc.append(line.lower())
+
     # Setup Model
     if args.arch == 'resnet18':
         model = models.resnet18(
-            pretrained=True,
+            pretrained=False,
             num_classes=n_classes,
-            rec_cfg=rec_cfg,
             scale=args.scale,
-            rec_cscale=args.rec_cscale)
+            rec_cfg=rec_cfg)
     elif args.arch == 'resnet50':
         model = models.resnet50(
-            pretrained=True,
+            pretrained=False,
             num_classes=n_classes,
-            rec_cfg=rec_cfg,
             scale=args.scale,
-            rec_cscale=args.rec_cscale)
+            rec_cfg=rec_cfg)
     elif args.arch == 'vgg':
         model = models.vgg16_bn(
             pretrained=True,
             num_classes=n_classes,
             scale=args.scale,
-            rec_cfg=rec_cfg,
-            rec_cscale=args.rec_cscale)
+            rec_cfg=rec_cfg)
     model = model.cuda()
-
-    print('Total params: %.2fM' % (
-            sum(p.numel() for p in model.parameters()) / 1e6))
 
     if args.resume is not None:
         if os.path.isfile(args.resume):
             print("Loading model and optimizer from checkpoint '{}'".format(
                 args.resume))
             checkpoint = torch.load(args.resume)
-            state_dict = checkpoint['state_dict']
             d = collections.OrderedDict()
-            for key, value in state_dict.items():
-                if 'module' in key:
-                    key = key[7:]
-                d[key] = value
+            for key, value in checkpoint['state_dict'].items():
+                tmp = key[7:]
+                d[tmp] = value
             model.load_state_dict(d)
+
             print("Loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
             sys.stdout.flush()
@@ -125,18 +173,16 @@ def test(args):
 
     model = models.fuse_module(model)
     model.eval()
-
     if args.report_speed:
-        fps = AverageMeter(max_len=500)
+        fps = AverageMeter()
         time_cost = {
-            'backbone_time': AverageMeter(max_len=500),
-            'neck_time': AverageMeter(max_len=500),
-            'det_head_time': AverageMeter(max_len=500),
-            'det_post_time': AverageMeter(max_len=500),
-            'rec_time': AverageMeter(max_len=500),
+            'backbone_time': AverageMeter(),
+            'neck_time': AverageMeter(),
+            'det_head_time': AverageMeter(),
+            'det_post_time': AverageMeter(),
+            'rec_time': AverageMeter(),
         }
 
-    json_out = {}
     for idx, (org_img, img) in enumerate(test_loader):
         print('Testing %d / %d' % (idx, len(test_loader)), flush=True)
 
@@ -152,43 +198,37 @@ def test(args):
             report_speed(outputs, fps, time_cost)
 
         bboxes = outputs['bboxes']
-
+        words = [None] * len(bboxes)
         if args.with_rec:
             words = outputs['words']
             word_scores = outputs['word_scores']
-            words = [correct(word, score) for word, score in
+            words = [correct(word, score, voc) for word, score in
                      zip(words, word_scores)]
 
         if args.with_rec:
             write_result_as_txt(
-                image_name, bboxes, 'outputs/submit_rctw_rec/', words)
+                image_name, bboxes, 'outputs/submit_ctw_rec/', words)
         else:
-            write_result_as_txt(image_name, bboxes, 'outputs/submit_rctw/')
+            write_result_as_txt(image_name, bboxes, 'outputs/submit_ctw/')
 
-        json_out[image_name] = {
-            'bboxes': np.array(outputs['bboxes']).astype(np.int).tolist(),
-            'scores': np.array(outputs['scores']).astype(
-                np.float32).tolist()}
-        if args.with_rec:
-            json_out[image_name]['words'] = words
-            json_out[image_name]['word_scores'] = np.array(
-                word_scores).astype(np.float32).tolist()
-        mmcv.dump(
-            json_out,
-            './outputs/rctw.json',
-            file_format='json',
-            ensure_ascii=False)
-
+        # visualize results
         if args.vis:
-            output_root = 'outputs/vis_rctw/'
-            if not os.path.exists(output_root):
-                os.makedirs(output_root)
-            text_box = org_img.copy()
-            for bbox in bboxes:
+            vis_root = 'outputs/vis_ctw/'
+            if not osp.exists(vis_root):
+                os.makedirs(vis_root)
+            vis_res = org_img.copy()
+            for bbox, word in zip(bboxes, words):
                 cv2.drawContours(
-                    text_box,
-                    [bbox.reshape(4, 2)],
-                    -1, (0, 255, 0), 4)
+                    vis_res, [bbox.reshape(-1, 2)], -1,
+                    (255, 0, 0), 2)
+                if word is not None:
+                    text_pos = np.min(bbox.reshape(-1, 2), axis=0)
+                    cv2.putText(
+                        text_pos,
+                        word,
+                        (tl[0], tl[1]),
+                        cv2.FONT_HERSHEY_COMPLEX,
+                        1, (255, 0, 0), 1)
             cv2.imwrite(
                 osp.join(vis_root, image_name + '.png'),
                 vis_res[:, :, ::-1])
@@ -206,24 +246,31 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Hyperparams')
     parser.add_argument('--arch', nargs='?', type=str, default='resnet18')
     parser.add_argument('--scale', nargs='?', type=int, default=4)
-    parser.add_argument('--short_size', nargs='?', type=int, default=736,
+    parser.add_argument('--short_size', nargs='?', type=int, default=640,
                         help='image short size')
     parser.add_argument('--emb_dim', nargs='?', type=int, default=4)
     parser.add_argument('--return_poly_bbox', nargs='?', type=str2bool,
-                        default=False)
-    parser.add_argument('--with_rec', nargs='?', type=str2bool, default=False)
+                        default=True)
     parser.add_argument('--feature_size', type=int, nargs='+', default=[8, 32])
-    parser.add_argument('--min_kernel_area', nargs='?', type=float, default=2.6)
-    parser.add_argument('--min_area', nargs='?', type=float, default=260)
-    parser.add_argument('--min_score', nargs='?', type=float, default=0.7)
+    parser.add_argument('--min_kernel_area', nargs='?', type=float, default=2)
+    parser.add_argument('--min_area', nargs='?', type=float, default=200)
+    parser.add_argument('--min_score', nargs='?', type=float, default=0.88)
+    parser.add_argument('--beam_size', nargs='?', type=int, default=0)
+    parser.add_argument('--voc', nargs='?', type=str, default=None)
     parser.add_argument('--resume', nargs='?', type=str, default=None)
     parser.add_argument('--report_speed', nargs='?', type=str2bool,
                         default=False)
-    parser.add_argument('--json_out', nargs='?', type=str2bool, default=True)
     parser.add_argument('--read_type', nargs='?', type=str, default='pil')
-    parser.add_argument('--rec_cscale', nargs='?', type=float, default=4)
     parser.add_argument('--vis', nargs='?', type=str2bool, default=False)
+
+    # recognition post-processing hyper-parameters
+    parser.add_argument('--with_rec', nargs='?', type=str2bool, default=False)
+    parser.add_argument('--rec_score', nargs='?', type=float, default=0.95)
+    parser.add_argument('--unalpha_score', nargs='?', type=float, default=0.91)
+    parser.add_argument('--rec_ignore_score', nargs='?', type=float,
+                        default=0.91)
+    parser.add_argument('--edit_dist_score', nargs='?', type=float,
+                        default=1.0 / 3.0)
     args = parser.parse_args()
     print(args)
-
     test(args)

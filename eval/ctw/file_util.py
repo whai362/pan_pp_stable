@@ -1,4 +1,5 @@
 import os
+import os.path as osp
 
 def read_dir(root):
 	file_path_list = []

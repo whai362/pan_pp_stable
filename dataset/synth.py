@@ -17,7 +17,7 @@ synth_train_data_dir = synth_root_dir
 synth_train_gt_path = synth_root_dir + 'gt.mat'
 
 
-def get_img(img_path, read_type='cv2'):
+def get_img(img_path, read_type='pil'):
     try:
         if read_type == 'cv2':
             img = cv2.imread(img_path)

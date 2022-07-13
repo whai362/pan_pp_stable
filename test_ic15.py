@@ -172,7 +172,8 @@ def test(args):
     n_classes = 2 + args.emb_dim
 
     data_loader = IC15Loader(
-        split='test', short_size=args.short_size,
+        split='test',
+        short_size=args.short_size,
         read_type=args.read_type,
         report_speed=args.report_speed)
     test_loader = torch.utils.data.DataLoader(
@@ -308,13 +309,14 @@ def test(args):
             for bbox, word in zip(bboxes, words):
                 cv2.drawContours(
                     vis_res, [bbox.reshape(4, 2)], -1, (0, 255, 0), 2)
-                text_pos = np.min(bbox.reshape(4, 2), axis=0)
-                cv2.putText(
-                    vis_res,
-                    word,
-                    (text_pos[0], text_pos[1]),
-                    cv2.FONT_HERSHEY_COMPLEX,
-                    0.5, (255, 0, 0), 1)
+                if word is not None:
+                    text_pos = np.min(bbox.reshape(4, 2), axis=0)
+                    cv2.putText(
+                        vis_res,
+                        word,
+                        (text_pos[0], text_pos[1]),
+                        cv2.FONT_HERSHEY_COMPLEX,
+                        0.5, (255, 0, 0), 1)
             cv2.imwrite(
                 osp.join(vis_root, image_name + '.png'),
                 vis_res[:, :, ::-1])

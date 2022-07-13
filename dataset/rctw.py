@@ -25,7 +25,7 @@ rctw_val_gt_dir = rctw_root_dir + 'train/'
 rctw_val_list = rctw_root_dir + 'val_list.txt'
 
 
-def get_img(img_path, read_type='cv2'):
+def get_img(img_path, read_type='pil'):
     try:
         if read_type == 'cv2':
             img = cv2.imread(img_path)

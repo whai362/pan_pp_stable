@@ -11,20 +11,17 @@ import math
 import string
 import scipy.io as scio
 import mmcv
-from .coco_text import COCO_Text
 
 EPS = 1e-6
-synth_root_dir = './data/SynthText/'
-synth_train_data_dir = synth_root_dir
-synth_train_gt_path = synth_root_dir + 'gt.mat'
+msra_root_dir = './data/MSRA-TD500/'
+msra_train_data_dir = msra_root_dir + 'train/'
+msra_train_gt_dir = msra_root_dir + 'train/'
+msra_test_data_dir = msra_root_dir + 'test/'
+msra_test_gt_dir = msra_root_dir + 'test/'
 
-ic17_root_dir = './data/ICDAR2017MLT/'
-ic17_train_data_dir = ic17_root_dir + 'ch8_training_images/'
-ic17_train_gt_dir = ic17_root_dir + 'ch8_training_localization_transcription_gt_v2/'
-
-ct_root_dir = './data/COCO-Text/'
-ct_train_data_dir = ct_root_dir + 'train2014/'
-ct_train_gt_path = ct_root_dir + 'COCO_Text.json'
+hust_root_dir = './data/HUST-TR400/'
+hust_train_data_dir = hust_root_dir
+hust_train_gt_dir = hust_root_dir
 
 
 def get_img(img_path, read_type='pil'):
@@ -37,35 +34,10 @@ def get_img(img_path, read_type='pil'):
     except Exception as e:
         print(img_path)
         raise
-
     return img
 
 
-def check(s):
-    for c in s:
-        if c in list(string.printable[:-6]):
-            continue
-        return False
-
-    return True
-
-
-def get_ann_synth(img, gts, texts, index):
-    bboxes = np.array(gts[index])
-    bboxes = np.reshape(bboxes, (bboxes.shape[0], bboxes.shape[1], -1))
-    bboxes = bboxes.transpose(2, 1, 0)
-    bboxes = np.reshape(bboxes, (bboxes.shape[0], -1)) / \
-             ([img.shape[1], img.shape[0]] * 4)
-
-    words = []
-    for text in texts[index]:
-        text = text.replace('\n', ' ').replace('\r', ' ')
-        words.extend([w for w in text.split(' ') if len(w) > 0])
-
-    return bboxes, words
-
-
-def get_ann_ic17(img, gt_path):
+def get_ann(img, gt_path):
     h, w = img.shape[0:2]
     lines = mmcv.list_from_file(gt_path)
     bboxes = []
@@ -73,40 +45,20 @@ def get_ann_ic17(img, gt_path):
     for line in lines:
         line = line.encode('utf-8').decode('utf-8-sig')
         line = line.replace('\xef\xbb\xbf', '')
-        gt = line.split(',')
-        word = gt[9].replace('\r', '').replace('\n', '')
 
-        if len(word) == 0 or word[0] == '#':
-            words.append('###')
-        elif not check(word):
-            words.append('???')
-        else:
-            words.append(word)
+        gt = line.split(' ')
 
-        bbox = [int(gt[i]) for i in range(8)]
-        bbox = np.array(bbox) / ([w * 1.0, h * 1.0] * 4)
+        w_ = np.float(gt[4])
+        h_ = np.float(gt[5])
+        x1 = np.float(gt[2]) + w_ / 2.0
+        y1 = np.float(gt[3]) + h_ / 2.0
+        theta = np.float(gt[6]) / math.pi * 180
+
+        bbox = cv2.boxPoints(((x1, y1), (w_, h_), theta))
+        bbox = bbox.reshape(-1) / ([w * 1.0, h * 1.0] * 4)
+
         bboxes.append(bbox)
-
-    return np.array(bboxes), words
-
-
-def get_ann_ct(img, anns):
-    h, w = img.shape[0:2]
-    bboxes = []
-    words = []
-    for ann in anns:
-        bbox = ann['polygon']
-        bbox = np.array(bbox) / ([w * 1.0, h * 1.0] * (len(bbox) // 2))
-        bboxes.append(bbox)
-
-        if 'utf8_string' not in ann:
-            words.append('###')
-        else:
-            word = ann['utf8_string']
-            if not check(word):
-                words.append('???')
-            else:
-                words.append(word)
+        words.append('tmp')
 
     return np.array(bboxes), words
 
@@ -115,6 +67,7 @@ def random_horizontal_flip(imgs):
     if random.random() < 0.5:
         for i in range(len(imgs)):
             imgs[i] = np.flip(imgs[i], axis=1).copy()
+
     return imgs
 
 
@@ -125,10 +78,8 @@ def random_rotate(imgs):
         img = imgs[i]
         w, h = img.shape[:2]
         rotation_matrix = cv2.getRotationMatrix2D((h / 2, w / 2), angle, 1)
-        img_rotation = cv2.warpAffine(
-            img,
-            rotation_matrix, (h, w),
-            flags=cv2.INTER_NEAREST)
+        img_rotation = cv2.warpAffine(img, rotation_matrix, (h, w),
+                                      flags=cv2.INTER_NEAREST)
         imgs[i] = img_rotation
 
     return imgs
@@ -138,6 +89,20 @@ def scale_aligned(img, h_scale, w_scale):
     h, w = img.shape[0:2]
     h = int(h * h_scale + 0.5)
     w = int(w * w_scale + 0.5)
+    if h % 32 != 0:
+        h = h + (32 - h % 32)
+    if w % 32 != 0:
+        w = w + (32 - w % 32)
+    img = cv2.resize(img, dsize=(w, h))
+
+    return img
+
+
+def scale_aligned_short(img, short_size=736):
+    h, w = img.shape[0:2]
+    scale = short_size * 1.0 / min(h, w)
+    h = int(h * scale + 0.5)
+    w = int(w * scale + 0.5)
     if h % 32 != 0:
         h = h + (32 - h % 32)
     if w % 32 != 0:
@@ -158,12 +123,10 @@ def random_scale(img, min_size, short_size=736):
     w_scale = scale / math.sqrt(aspect)
 
     img = scale_aligned(img, h_scale, w_scale)
-
     return img
 
 
 def random_crop_padding(imgs, target_size):
-    """ using padding and the final crop size is (800, 800) """
     h, w = imgs[0].shape[0:2]
     t_w, t_h = target_size
     p_w, p_h = target_size
@@ -174,6 +137,7 @@ def random_crop_padding(imgs, target_size):
     t_w = t_w if t_w < w else w
 
     if random.random() > 3.0 / 8.0 and np.max(imgs[1]) > 0:
+        # make sure to crop the text region
         tl = np.min(np.where(imgs[1] > 0), axis=1) - (t_h, t_w)
         tl[tl < 0] = 0
         br = np.max(np.where(imgs[1] > 0), axis=1) - (t_h, t_w)
@@ -218,6 +182,7 @@ def update_word_mask(instance, instance_before_crop, word_mask):
             word_mask[label] = 0
             continue
         ind_before_crop = instance_before_crop == label
+        # print(np.sum(ind), np.sum(ind_before_crop))
         if float(np.sum(ind)) / np.sum(ind_before_crop) > 0.9:
             continue
         word_mask[label] = 0
@@ -233,7 +198,6 @@ def perimeter(bbox):
     peri = 0.0
     for i in range(bbox.shape[0]):
         peri += dist(bbox[i], bbox[(i + 1) % bbox.shape[0]])
-
     return peri
 
 
@@ -278,6 +242,7 @@ def get_vocabulary(voc_type, EOS='EOS', PADDING='PAD', UNKNOWN='UNK'):
         raise KeyError(
             'voc_type must be one of "LOWERCASE", "ALLCASES", "ALLCASES_SYMBOLS"')
 
+    # update the voc with specifical chars
     voc.append(EOS)
     voc.append(PADDING)
     voc.append(UNKNOWN)
@@ -288,7 +253,7 @@ def get_vocabulary(voc_type, EOS='EOS', PADDING='PAD', UNKNOWN='UNK'):
     return voc, char2id, id2char
 
 
-class PretrainDatasetLoader(data.Dataset):
+class MSRALoader(data.Dataset):
     def __init__(self,
                  split='train',
                  is_transform=False,
@@ -296,7 +261,8 @@ class PretrainDatasetLoader(data.Dataset):
                  kernel_scale=0.5,
                  short_size=736,
                  for_rec=False,
-                 read_type='pil'):
+                 read_type='pil',
+                 report_speed=False):
         self.split = split
         self.is_transform = is_transform
 
@@ -307,40 +273,42 @@ class PretrainDatasetLoader(data.Dataset):
         self.short_size = short_size
         self.for_rec = for_rec
 
-        self.img_paths = {}
-        self.gts = {}
-        self.texts = {}
+        if split == 'train':
+            data_dirs = [msra_train_data_dir, hust_train_data_dir]
+            gt_dirs = [msra_train_gt_dir, hust_train_gt_dir]
+        else:
+            data_dirs = [msra_test_data_dir]
+            gt_dirs = [msra_test_gt_dir]
 
-        self.img_num = 0
-        # synth
-        data = scio.loadmat(synth_train_gt_path)
-        self.img_paths['synth'] = data['imnames'][0]
-        self.gts['synth'] = data['wordBB'][0]
-        self.texts['synth'] = data['txt'][0]
-        self.img_num += len(self.img_paths['synth'])
+        self.img_paths = []
+        self.gt_paths = []
 
-        # ic17
-        self.img_paths['ic17'] = []
-        self.gts['ic17'] = []
-        img_names = [img_name for img_name in
-                     mmcv.utils.scandir(ic17_train_data_dir, '.jpg')]
-        img_names.extend(
-            [img_name for img_name in
-             mmcv.utils.scandir(ic17_train_data_dir, '.png')])
-        for idx, img_name in enumerate(img_names):
-            img_path = ic17_train_data_dir + img_name
-            self.img_paths['ic17'].append(img_path)
+        for data_dir, gt_dir in zip(data_dirs, gt_dirs):
+            img_names = [img_name for img_name in mmcv.utils.scandir(data_dir)
+                         if img_name.endswith('.JPG')]
+            img_names.extend(
+                [img_name for img_name in mmcv.utils.scandir(data_dir) if
+                 img_name.endswith('.jpg')])
 
-            gt_name = 'gt_' + img_name.split('.')[0] + '.txt'
-            gt_path = ic17_train_gt_dir + gt_name
-            self.gts['ic17'].append(gt_path)
-        self.img_num += len(self.img_paths['ic17'])
+            img_paths = []
+            gt_paths = []
+            for idx, img_name in enumerate(img_names):
+                img_path = data_dir + img_name
+                img_paths.append(img_path)
 
-        # coco_text
-        self.ct = COCO_Text(ct_train_gt_path)
-        self.img_paths['ct'] = self.ct.getImgIds(
-            imgIds=self.ct.train, catIds=[('legibility', 'legible')])
-        self.img_num += len(self.img_paths['ct'])
+                gt_name = img_name.split('.')[0] + '.gt'
+                gt_path = gt_dir + gt_name
+                gt_paths.append(gt_path)
+
+            self.img_paths.extend(img_paths)
+            self.gt_paths.extend(gt_paths)
+
+        if report_speed:
+            target_size = 3000
+            data_size = len(self.img_paths)
+            extend_scale = (target_size + data_size - 1) // data_size
+            self.img_paths = (self.img_paths * extend_scale)[:target_size]
+            self.gt_paths = (self.gt_paths * extend_scale)[:target_size]
 
         self.voc, self.char2id, self.id2char = get_vocabulary('LOWERCASE')
         self.max_word_num = 200
@@ -349,67 +317,28 @@ class PretrainDatasetLoader(data.Dataset):
         print('reading type: %s.' % self.read_type)
 
     def __len__(self):
-        return self.img_num
+        return len(self.img_paths)
 
-    def load_synth_single(self, index):
-        img_path = synth_train_data_dir + self.img_paths['synth'][index][0]
+    def prepare_training_data(self, index):
+        img_path = self.img_paths[index]
+        gt_path = self.gt_paths[index]
+
         img = get_img(img_path, self.read_type)
-        bboxes, words = get_ann_synth(
-            img, self.gts['synth'],
-            self.texts['synth'], index)
-
-        return img, bboxes, words
-
-    def load_ic17_single(self, index):
-        img_path = self.img_paths['ic17'][index]
-        gt_path = self.gts['ic17'][index]
-        img = get_img(img_path, self.read_type)
-        bboxes, words = get_ann_ic17(img, gt_path)
-
-        return img, bboxes, words
-
-    def load_ct_single(self, index):
-        img_meta = self.ct.loadImgs(self.img_paths['ct'][index])[0]
-        img_path = ct_train_data_dir + img_meta['file_name']
-        img = get_img(img_path, self.read_type)
-
-        annIds = self.ct.getAnnIds(imgIds=img_meta['id'])
-        anns = self.ct.loadAnns(annIds)
-        bboxes, words = get_ann_ct(img, anns)
-
-        return img, bboxes, words
-
-    def __getitem__(self, index):
-        choice = random.random()
-        if choice < 1.0 / 3.0:
-            index = random.randint(0, len(self.img_paths['synth']) - 1)
-            img, bboxes, words = self.load_synth_single(index)
-        elif choice < 2.0 / 3.0:
-            index = random.randint(0, len(self.img_paths['ic17']) - 1)
-            img, bboxes, words = self.load_ic17_single(index)
-        else:
-            index = random.randint(0, len(self.img_paths['ct']) - 1)
-            img, bboxes, words = self.load_ct_single(index)
+        bboxes, words = get_ann(img, gt_path)
 
         if bboxes.shape[0] > self.max_word_num:
             bboxes = bboxes[:self.max_word_num]
             words = words[:self.max_word_num]
 
-        gt_words = np.full(
-            (self.max_word_num + 1, self.max_word_len),
-            self.char2id['PAD'],
-            dtype=np.int32)
+        gt_words = np.full((self.max_word_num + 1, self.max_word_len),
+                           self.char2id['PAD'], dtype=np.int32)
         word_mask = np.zeros((self.max_word_num + 1,), dtype=np.int32)
         for i, word in enumerate(words):
             if word == '###':
                 continue
-            if word == '???':
-                continue
             word = word.lower()
-            gt_word = np.full(
-                (self.max_word_len,),
-                self.char2id['PAD'],
-                dtype=np.int)
+            gt_word = np.full((self.max_word_len,), self.char2id['PAD'],
+                              dtype=np.int)
             for j, char in enumerate(word):
                 if j > self.max_word_len - 1:
                     break
@@ -430,10 +359,8 @@ class PretrainDatasetLoader(data.Dataset):
         gt_instance = np.zeros(img.shape[0:2], dtype='uint8')
         training_mask = np.ones(img.shape[0:2], dtype='uint8')
         if bboxes.shape[0] > 0:
-            bboxes = np.reshape(
-                bboxes * ([img.shape[1], img.shape[0]] * (
-                        bboxes.shape[1] // 2)),
-                (bboxes.shape[0], -1, 2)).astype('int32')
+            bboxes = np.reshape(bboxes * ([img.shape[1], img.shape[0]] * 4),
+                                (bboxes.shape[0], -1, 2)).astype('int32')
             for i in range(bboxes.shape[0]):
                 cv2.drawContours(gt_instance, [bboxes[i]], -1, i + 1, -1)
                 if words[i] == '###':
@@ -498,5 +425,25 @@ class PretrainDatasetLoader(data.Dataset):
         gt_words = torch.from_numpy(gt_words).long()
         word_mask = torch.from_numpy(word_mask).long()
 
-        return img, gt_text, gt_kernels, training_mask, gt_instance, \
-               gt_bboxes, gt_words, word_mask
+        return img, gt_text, gt_kernels, training_mask, gt_instance, gt_bboxes, gt_words, word_mask
+
+    def prepare_test_data(self, index):
+        img_path = self.img_paths[index]
+
+        img = get_img(img_path, self.read_type)
+
+        scaled_img = scale_aligned_short(img, self.short_size)
+        scaled_img = Image.fromarray(scaled_img)
+        scaled_img = scaled_img.convert('RGB')
+        scaled_img = transforms.ToTensor()(scaled_img)
+        scaled_img = transforms.Normalize(
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225])(scaled_img)
+
+        return img, scaled_img
+
+    def __getitem__(self, index):
+        if self.split == 'train':
+            return self.prepare_training_data(index)
+        else:
+            return self.prepare_test_data(index)

@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from dataset import IC15Loader
+from dataset import CTWLoader, CTWv2Loader
 import models
 from utils import Logger, AverageMeter
 
@@ -38,7 +38,8 @@ def train(args, train_loader, model, optimizer, epoch, start_iter):
     for batch_idx, (imgs, gt_texts, gt_kernels, training_masks, gt_instances,
                     gt_bboxes, gt_words, word_masks) in enumerate(train_loader):
         if batch_idx < start_iter:
-            print('skipping iter: %d' % batch_idx, flush=True)
+            print('skipping iter: %d' % batch_idx)
+            sys.stdout.flush()
             continue
         data_time.update(time.time() - end)
 
@@ -53,7 +54,8 @@ def train(args, train_loader, model, optimizer, epoch, start_iter):
             'training_masks': training_masks,
             'gt_instances': gt_instances,
             'gt_bboxes': gt_bboxes,
-            'args': args}
+            'args': args
+        }
         if args.with_rec:
             input['gt_words'] = gt_words
             input['word_masks'] = word_masks
@@ -153,7 +155,7 @@ def save_checkpoint(args, state, checkpoint='checkpoint',
 
 def main(args):
     if args.checkpoint == '':
-        args.checkpoint = 'checkpoints/ic15_{arch}_{img_size}'.format(
+        args.checkpoint = 'checkpoints/ctw_{arch}_{img_size}'.format(
             arch=args.arch,
             img_size=args.img_size)
         if args.with_rec:
@@ -171,12 +173,22 @@ def main(args):
     start_epoch = 0
     start_iter = 0
 
-    data_loader = IC15Loader(
-        split='train', is_transform=True,
-        img_size=args.img_size,
-        kernel_scale=args.kernel_scale,
-        short_size=args.short_size, for_rec=args.with_rec,
-        read_type=args.read_type)
+    if args.with_rec:
+        data_loader = CTWv2Loader(
+            split='train', is_transform=True,
+            img_size=args.img_size,
+            kernel_scale=args.kernel_scale,
+            short_size=args.short_size,
+            for_rec=args.with_rec,
+            read_type=args.read_type)
+    else:
+        data_loader = CTWLoader(
+            split='train', is_transform=True,
+            img_size=args.img_size,
+            kernel_scale=args.kernel_scale,
+            short_size=args.short_size,
+            for_rec=args.with_rec,
+            read_type=args.read_type)
     train_loader = torch.utils.data.DataLoader(
         data_loader,
         batch_size=args.batch,
@@ -194,6 +206,7 @@ def main(args):
             'feature_size': args.feature_size
         }
 
+    # Setup Model
     if args.arch == 'resnet18':
         model = models.resnet18(
             pretrained=True,
@@ -209,9 +222,9 @@ def main(args):
             pretrained=True,
             num_classes=n_classes,
             rec_cfg=rec_cfg)
-
     model = torch.nn.DataParallel(model).cuda()
 
+    # Check if model has custom optimizer / loss
     if hasattr(model.module, 'optimizer'):
         optimizer = model.module.optimizer
     else:
@@ -219,12 +232,11 @@ def main(args):
             optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
         else:
             optimizer = torch.optim.SGD(
-                model.parameters(),
-                lr=args.lr,
+                model.parameters(), lr=args.lr,
                 momentum=0.99,
                 weight_decay=5e-4)
 
-    title = 'ic15'
+    title = 'ctw'
     logger = None
     if args.pretrain:
         print('Finetuning from pretrain.')
@@ -252,10 +264,10 @@ def main(args):
         logger.set_names(['LR', 'Loss', 'IoU', 'Acc'])
 
     for epoch in range(start_epoch, args.epoch):
-        print('\nEpoch: [%d | %d]' % (epoch + 1, args.epoch), flush=True)
+        print('\nEpoch: [%d | %d]' % (epoch + 1, args.epoch))
 
-        train_loss, train_iou_text, train_iou_kernel, train_acc_rec = train(
-            args, train_loader, model, optimizer, epoch, start_iter)
+        train_loss, train_iou_text, train_iou_kernel, train_acc_rec = \
+            train(args, train_loader, model, optimizer, epoch, start_iter)
 
         save_checkpoint(
             args,
@@ -280,7 +292,8 @@ def str2bool(v):
         return True
     elif v.lower() == 'false':
         return False
-    raise argparse.ArgumentTypeError('Unsupported value encountered.')
+    else:
+        raise argparse.ArgumentTypeError('Unsupported value encountered.')
 
 
 if __name__ == '__main__':
@@ -292,9 +305,9 @@ if __name__ == '__main__':
     parser.add_argument('--use_adam', nargs='?', type=str2bool, default=True)
     parser.add_argument('--epoch', nargs='?', type=int, default=600)
     parser.add_argument('--schedule', type=int, nargs='+', default=[200, 400])
-    parser.add_argument('--img_size', nargs='?', type=int, default=736)
-    parser.add_argument('--short_size', nargs='?', type=int, default=736)
-    parser.add_argument('--kernel_scale', nargs='?', type=float, default=0.5)
+    parser.add_argument('--img_size', nargs='?', type=int, default=640)
+    parser.add_argument('--short_size', nargs='?', type=int, default=640)
+    parser.add_argument('--kernel_scale', nargs='?', type=float, default=0.7)
     parser.add_argument('--emb_dim', nargs='?', type=int, default=4)
     parser.add_argument('--with_rec', nargs='?', type=str2bool, default=False)
     parser.add_argument('--feature_size', type=int, nargs='+', default=[8, 32])
@@ -309,6 +322,5 @@ if __name__ == '__main__':
                         default=False)
     parser.add_argument('--read_type', nargs='?', type=str, default='pil')
     args = parser.parse_args()
-    print(args)
 
     main(args)

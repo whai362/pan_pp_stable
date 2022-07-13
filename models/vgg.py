@@ -1,4 +1,5 @@
 import os
+import os.path as osp
 import sys
 import torch
 import torch.nn as nn
@@ -9,10 +10,10 @@ from .detection_head import DetectionHead
 from .recognition_head import RecognitionHead
 import time
 
-try:
-    from torch.hub import load_state_dict_from_url
-except ImportError:
-    from torch.utils.model_zoo import load_url as load_state_dict_from_url
+# try:
+#     from torch.hub import load_state_dict_from_url
+# except ImportError:
+#     from torch.utils.model_zoo import load_url as load_state_dict_from_url
 
 __all__ = [
     'VGG', 'vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn', 'vgg16', 'vgg16_bn',
@@ -363,8 +364,7 @@ def _vgg(arch, cfg, batch_norm, pretrained, progress, **kwargs):
         kwargs['init_weights'] = False
     model = VGG(make_layers(cfgs[cfg], batch_norm=batch_norm), **kwargs)
     if pretrained:
-        state_dict = load_state_dict_from_url(model_urls[arch],
-                                              progress=progress)
+        state_dict = load_url(model_urls[arch])
         model.load_state_dict(state_dict, strict=False)
     return model
 
@@ -457,3 +457,14 @@ def vgg19_bn(pretrained=False, progress=True, **kwargs):
         progress (bool): If True, displays a progress bar of the download to stderr
     """
     return _vgg('vgg19_bn', 'E', True, pretrained, progress, **kwargs)
+
+
+def load_url(url, model_dir='./pretrained', map_location=None):
+    if not osp.exists(model_dir):
+        os.makedirs(model_dir)
+    filename = url.split('/')[-1]
+    cached_file = osp.join(model_dir, filename)
+    if not osp.exists(cached_file):
+        sys.stderr.write('Downloading: "{}" to {}\n'.format(url, cached_file))
+        urlretrieve(url, cached_file)
+    return torch.load(cached_file, map_location=map_location)

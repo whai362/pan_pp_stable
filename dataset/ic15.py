@@ -20,7 +20,7 @@ ic15_test_data_dir = ic15_root_dir + 'ch4_test_images/'
 ic15_test_gt_dir = ic15_root_dir + 'ch4_test_localization_transcription_gt/'
 
 
-def get_img(img_path, read_type='cv2'):
+def get_img(img_path, read_type='pil'):
     try:
         if read_type == 'cv2':
             img = cv2.imread(img_path)
@@ -413,8 +413,9 @@ class IC15Loader(data.Dataset):
             img = img.convert('RGB')
 
         img = transforms.ToTensor()(img)
-        img = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                   std=[0.229, 0.224, 0.225])(img)
+        img = transforms.Normalize(
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225])(img)
 
         gt_text = torch.from_numpy(gt_text).long()
         gt_kernels = torch.from_numpy(gt_kernels).long()

@@ -2,8 +2,23 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="22cbe542-fe69-4220-9c8e-55fa5abc2eac" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/tmp.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/RCTW_RESULTS.md" beforeDir="false" afterPath="$PROJECT_DIR$/RCTW17_RESULTS.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dataset/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataset/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dataset/ic15.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataset/ic15.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dataset/joint_dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataset/joint_dataset.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dataset/pretrain_dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataset/pretrain_dataset.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dataset/rctw.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataset/rctw.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dataset/synth.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataset/synth.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/eval/ctw/eval.py" beforeDir="false" afterPath="$PROJECT_DIR$/eval/ctw/eval.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/eval/ctw/file_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/eval/ctw/file_util.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/eval/msra/eval.py" beforeDir="false" afterPath="$PROJECT_DIR$/eval/msra/eval.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/eval/msra/file_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/eval/msra/file_util.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/vgg.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/vgg.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_ic15.py" beforeDir="false" afterPath="$PROJECT_DIR$/test_ic15.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_rctw.py" beforeDir="false" afterPath="$PROJECT_DIR$/test_rctw.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/train_ic15.py" beforeDir="false" afterPath="$PROJECT_DIR$/train_ic15.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -18,7 +33,7 @@
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="PropertiesComponent">
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
-    <property name="WebServerToolWindowFactoryState" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="WebServerToolWindowPanel.toolwindow.highlight.mappings" value="true" />
     <property name="WebServerToolWindowPanel.toolwindow.highlight.symlinks" value="true" />
     <property name="WebServerToolWindowPanel.toolwindow.show.date" value="false" />
@@ -50,7 +65,17 @@
       <option name="presentableId" value="Default" />
       <updated>1651479240262</updated>
       <workItem from="1651479242621" duration="12037000" />
-      <workItem from="1651503246703" duration="40766000" />
+      <workItem from="1651503246703" duration="41604000" />
+      <workItem from="1653531249651" duration="601000" />
+      <workItem from="1653587079144" duration="671000" />
+      <workItem from="1653635320861" duration="7000" />
+      <workItem from="1655791058510" duration="1619000" />
+      <workItem from="1656399322055" duration="2613000" />
+      <workItem from="1656402523145" duration="4281000" />
+      <workItem from="1656418206065" duration="1925000" />
+      <workItem from="1656420283259" duration="15627000" />
+      <workItem from="1656487569646" duration="17988000" />
+      <workItem from="1656995696394" duration="597000" />
     </task>
     <servers />
   </component>
@@ -62,7 +87,9 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State />
+            <State>
+              <option name="COLUMN_ORDER" />
+            </State>
           </value>
         </entry>
       </map>

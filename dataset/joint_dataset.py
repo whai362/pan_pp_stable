@@ -35,7 +35,7 @@ tt_train_data_dir = tt_root_dir + 'Images/Train/'
 tt_train_gt_dir = tt_root_dir + 'Groundtruth/Polygon/Train/'
 
 
-def get_img(img_path, read_type='cv2'):
+def get_img(img_path, read_type='pil'):
     try:
         if read_type == 'cv2':
             img = cv2.imread(img_path)
