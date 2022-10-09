@@ -34,6 +34,8 @@ RCTW-17: please refer to [RCTW17_RESULTS.md](RCTW17_RESULTS.md) for training and
 
 Total-Text: please refer to [TT_RESULTS.md](TT_RESULTS.md) for training and testing.
 
+CTW1500: please refer to [CTW_RESULTS.md](CTW_RESULTS.md) for training and testing.
+
 ### Evaluate the performance
 
 ```shell
