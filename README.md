@@ -36,6 +36,8 @@ Total-Text: please refer to [TT_RESULTS.md](TT_RESULTS.md) for training and test
 
 CTW1500: please refer to [CTW_RESULTS.md](CTW_RESULTS.md) for training and testing.
 
+MSRA-TD500: please refer to [MSRA_RESULTS.md](MSRA_RESULTS.md) for training and testing.
+
 ### Evaluate the performance
 
 ```shell
